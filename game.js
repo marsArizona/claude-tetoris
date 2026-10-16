@@ -13,6 +13,7 @@ const COLORS = [
   '#e57373', // Z - red
   '#7986cb', // J - indigo
   '#ffb74d', // L - orange
+  '#f06292', // U - pink
 ];
 
 const PIECES = [
@@ -24,9 +25,11 @@ const PIECES = [
   [[5,5,0],[0,5,5],[0,0,0]],                  // Z
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
+  [[8,0,8],[8,8,8],[0,0,0]],                  // U (herradura)
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+const SETTLE_STEP = 60; // ms por fila durante la animación de sedimentación
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -40,14 +43,14 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, pieceIds, nextPieceId, current, next, score, lines, level, paused, gameOver, settling, settleAccum, lastTime, dropAccum, dropInterval, animId;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
 function randomPiece() {
-  const type = Math.floor(Math.random() * 7) + 1;
+  const type = Math.floor(Math.random() * (PIECES.length - 1)) + 1;
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
@@ -89,20 +92,81 @@ function tryRotate() {
 function merge() {
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
-      if (current.shape[r][c])
+      if (current.shape[r][c]) {
         board[current.y + r][current.x + c] = current.shape[r][c];
+        pieceIds[current.y + r][current.x + c] = nextPieceId;
+      }
+  nextPieceId++;
 }
 
-function clearLines() {
+function removeFullRows() {
   let cleared = 0;
   for (let r = ROWS - 1; r >= 0; r--) {
     if (board[r].every(v => v !== 0)) {
       board.splice(r, 1);
       board.unshift(new Array(COLS).fill(0));
+      pieceIds.splice(r, 1);
+      pieceIds.unshift(new Array(COLS).fill(0));
       cleared++;
       r++;
     }
   }
+  return cleared;
+}
+
+// Agrupa las celdas ocupadas en fragmentos: bloques contiguos de la misma pieza.
+function findFragments() {
+  const seen = createBoard();
+  const fragments = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (!board[r][c] || seen[r][c]) continue;
+      const id = pieceIds[r][c];
+      const cells = [];
+      const stack = [[r, c]];
+      seen[r][c] = 1;
+      while (stack.length) {
+        const [cr, cc] = stack.pop();
+        cells.push([cr, cc]);
+        for (const [nr, nc] of [[cr + 1, cc], [cr - 1, cc], [cr, cc + 1], [cr, cc - 1]]) {
+          if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+          if (seen[nr][nc] || !board[nr][nc] || pieceIds[nr][nc] !== id) continue;
+          seen[nr][nc] = 1;
+          stack.push([nr, nc]);
+        }
+      }
+      fragments.push(cells);
+    }
+  }
+  return fragments;
+}
+
+// Sedimentación: avanza una fila todos los fragmentos sin apoyo. Devuelve si algo se movió.
+function settleStep() {
+  const fragments = findFragments();
+  // los más bajos primero, para que los apilados encima caigan en el mismo paso
+  fragments.sort((a, b) => Math.max(...b.map(([r]) => r)) - Math.max(...a.map(([r]) => r)));
+  let moved = false;
+  for (const cells of fragments) {
+    const own = new Set(cells.map(([r, c]) => r * COLS + c));
+    const canFall = cells.every(([r, c]) =>
+      r + 1 < ROWS && (!board[r + 1][c] || own.has((r + 1) * COLS + c)));
+    if (!canFall) continue;
+    // de abajo hacia arriba para no pisar celdas del propio fragmento
+    cells.sort((a, b) => b[0] - a[0]);
+    for (const [r, c] of cells) {
+      board[r + 1][c] = board[r][c];
+      pieceIds[r + 1][c] = pieceIds[r][c];
+      board[r][c] = 0;
+      pieceIds[r][c] = 0;
+    }
+    moved = true;
+  }
+  return moved;
+}
+
+function clearLines() {
+  const cleared = removeFullRows();
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
@@ -110,6 +174,7 @@ function clearLines() {
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -137,7 +202,23 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  clearLines();
+  if (clearLines()) {
+    // la siguiente pieza espera a que termine de caer el sedimento
+    current = null;
+    settling = true;
+    settleAccum = 0;
+  } else {
+    spawn();
+  }
+}
+
+// Un paso de la animación: baja el sedimento una fila; si ya se posó, busca
+// líneas nuevas (cascada) y, si no hay, devuelve el control al jugador.
+function advanceSettle() {
+  if (settleStep()) return;
+  if (clearLines()) return;
+  settling = false;
+  dropAccum = 0;
   spawn();
 }
 
@@ -194,6 +275,8 @@ function draw() {
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
 
+  if (!current) return;
+
   // ghost
   const gy = ghostY();
   for (let r = 0; r < current.shape.length; r++)
@@ -243,26 +326,38 @@ function togglePause() {
 function loop(ts) {
   const dt = ts - lastTime;
   lastTime = ts;
-  dropAccum += dt;
-  if (dropAccum >= dropInterval) {
-    dropAccum = 0;
-    if (!collide(current.shape, current.x, current.y + 1)) {
-      current.y++;
-    } else {
-      lockPiece();
+  if (settling) {
+    settleAccum += dt;
+    if (settleAccum >= SETTLE_STEP) {
+      settleAccum = 0;
+      advanceSettle();
+    }
+  } else {
+    dropAccum += dt;
+    if (dropAccum >= dropInterval) {
+      dropAccum = 0;
+      if (!collide(current.shape, current.x, current.y + 1)) {
+        current.y++;
+      } else {
+        lockPiece();
+      }
     }
   }
   draw();
-  animId = requestAnimationFrame(loop);
+  if (!gameOver) animId = requestAnimationFrame(loop);
 }
 
 function init() {
   board = createBoard();
+  pieceIds = createBoard();
+  nextPieceId = 1;
   score = 0;
   lines = 0;
   level = 1;
   paused = false;
   gameOver = false;
+  settling = false;
+  settleAccum = 0;
   dropInterval = 1000;
   dropAccum = 0;
   lastTime = performance.now();
@@ -276,7 +371,7 @@ function init() {
 
 document.addEventListener('keydown', e => {
   if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  if (paused || gameOver || settling) return;
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
