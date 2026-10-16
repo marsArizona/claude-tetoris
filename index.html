@@ -5,8 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tetris</title>
   <link rel="stylesheet" href="style.css" />
+  <script>
+    document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';
+  </script>
 </head>
 <body>
+  <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Cambiar tema"></button>
   <h1 class="game-title">TETRIS</h1>
   <div class="wrapper">
     <div class="game-container">
