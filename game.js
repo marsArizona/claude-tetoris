@@ -169,7 +169,7 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -301,4 +301,19 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
+const themeBtn = document.getElementById('theme-toggle');
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem('theme', theme);
+  themeBtn.textContent = theme === 'dark' ? '☀️ Claro' : '🌙 Oscuro';
+  draw(); // repinta la cuadrícula aunque el juego esté en pausa
+}
+
+themeBtn.addEventListener('click', () => {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  themeBtn.blur(); // evita que Space/Enter vuelvan a activar el botón
+});
+
 init();
+applyTheme(document.documentElement.dataset.theme);
