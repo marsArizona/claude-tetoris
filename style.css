@@ -226,9 +226,7 @@ kbd {
   display: block;
   width: 300px;
   height: auto;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  box-shadow: 0 0 40px var(--shadow);
+  filter: drop-shadow(0 0 16px var(--shadow));
 }
 
 /* Celular: la imagen pasa al fondo del tablero, semitransparente */
@@ -246,7 +244,7 @@ kbd {
     content: "";
     position: absolute;
     inset: 0;
-    background: url("artwork.jpeg") center / cover no-repeat;
+    background: url("artwork.png") center / contain no-repeat;
     opacity: 0.25;
     border-radius: 4px;
     pointer-events: none;
