@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tetris</title>
+  <title>TETORIS</title>
   <link rel="stylesheet" href="style.css" />
   <script>
     document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';
@@ -11,10 +11,12 @@
 </head>
 <body>
   <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Cambiar tema"></button>
-  <h1 class="game-title">TETRIS</h1>
+  <h1 class="game-title">TETORIS</h1>
   <div class="wrapper">
     <div class="game-container">
-      <canvas id="board" width="300" height="600"></canvas>
+      <div class="board-wrap">
+        <canvas id="board" width="300" height="600"></canvas>
+      </div>
 
       <aside class="panel">
         <div class="panel-section">
@@ -46,6 +48,8 @@
           </ul>
         </div>
       </aside>
+
+      <img class="artwork" src="artwork.jpeg" alt="" />
     </div>
 
     <div id="overlay" class="overlay hidden">

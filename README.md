@@ -1,4 +1,4 @@
-# Tetris
+# TETORIS
 
 Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canvas y CSS. Sin dependencias externas, sin frameworks, sin proceso de build: solo abrir y jugar.
 
@@ -10,7 +10,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
 
 ## Tabla de contenidos
 
-- [Tetris](#tetris)
+- [TETORIS](#tetoris)
   - [Tabla de contenidos](#tabla-de-contenidos)
   - [Qué hace el proyecto](#qué-hace-el-proyecto)
   - [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
