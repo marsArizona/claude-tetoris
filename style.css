@@ -217,41 +217,24 @@ kbd {
   background: var(--btn-hover);
 }
 
-/* ---- Imagen decorativa ---- */
+/* ---- Imagen de fondo del tablero (semitransparente) ---- */
 .board-wrap {
   position: relative;
+  background: var(--board-bg);
+  border-radius: 4px;
 }
 
-.artwork {
-  display: block;
-  width: 300px;
-  height: auto;
-  filter: drop-shadow(0 0 16px var(--shadow));
+.board-wrap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("artwork.png") center / contain no-repeat;
+  opacity: 0.25;
+  border-radius: 4px;
+  pointer-events: none;
 }
 
-/* Celular: la imagen pasa al fondo del tablero, semitransparente */
-@media (max-width: 820px) {
-  .artwork {
-    display: none;
-  }
-
-  .board-wrap {
-    background: var(--board-bg);
-    border-radius: 4px;
-  }
-
-  .board-wrap::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: url("artwork.png") center / contain no-repeat;
-    opacity: 0.25;
-    border-radius: 4px;
-    pointer-events: none;
-  }
-
-  #board {
-    position: relative;
-    background: transparent;
-  }
+#board {
+  position: relative;
+  background: transparent;
 }
