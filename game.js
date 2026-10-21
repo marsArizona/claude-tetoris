@@ -42,8 +42,21 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const newRecordEl = document.getElementById('new-record');
+const nameForm = document.getElementById('name-form');
+const nameInput = document.getElementById('name-input');
+const recordsBody = document.getElementById('records-body');
+const bestComboEl = document.getElementById('best-combo');
+const maxLinesEl = document.getElementById('max-lines');
+const resetRecordsBtn = document.getElementById('reset-records-btn');
 
-let board, pieceIds, nextPieceId, current, next, score, lines, level, paused, gameOver, settling, settleAccum, lastTime, dropAccum, dropInterval, animId;
+const RECORDS_KEY = 'tetoris-records';
+const MAX_RECORDS = 5;
+const MAX_NAME = 12;
+
+let board, pieceIds, nextPieceId, current, next, score, lines, level, combo, maxCombo, paused, gameOver, settling, settleAccum, lastTime, dropAccum, dropInterval, animId;
+let pendingRecord = null; // entrada del top aún sin nombre confirmado
+let lastSavedRank = -1;   // puesto de la última entrada guardada, para resaltarla
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -202,7 +215,11 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  if (clearLines()) {
+  const cleared = clearLines();
+  // combo: piezas consecutivas que completan al menos una línea
+  combo = cleared ? combo + 1 : 0;
+  maxCombo = Math.max(maxCombo, combo);
+  if (cleared) {
     // la siguiente pieza espera a que termine de caer el sedimento
     current = null;
     settling = true;
@@ -301,12 +318,145 @@ function drawNext() {
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
+// ---- Tabla de récords (localStorage) ----
+
+function sanitizeName(name) {
+  return String(name).replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, MAX_NAME);
+}
+
+function toCount(v) {
+  return Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
+}
+
+// Lee y valida los récords; ante cualquier dato inesperado devuelve valores seguros.
+function loadRecords() {
+  const empty = { scores: [], bestCombo: 0, maxLines: 0 };
+  let data;
+  try {
+    data = JSON.parse(localStorage.getItem(RECORDS_KEY));
+  } catch {
+    return empty;
+  }
+  if (!data || typeof data !== 'object') return empty;
+  const scores = (Array.isArray(data.scores) ? data.scores : [])
+    .filter(e => e && typeof e === 'object' && typeof e.name === 'string' && Number.isFinite(e.score) && e.score >= 0)
+    .map(e => ({ name: sanitizeName(e.name) || 'Anónimo', score: toCount(e.score), lines: toCount(e.lines) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_RECORDS);
+  return { scores, bestCombo: toCount(data.bestCombo), maxLines: toCount(data.maxLines) };
+}
+
+function saveRecords(records) {
+  try {
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+  } catch {
+    // almacenamiento no disponible (modo privado, cuota llena…): se ignora
+  }
+}
+
+// Posición (0-based) que ocuparía la puntuación en el top, o -1 si no entra.
+function recordRank(scores, value) {
+  if (value <= 0) return -1;
+  const idx = scores.findIndex(e => value > e.score);
+  if (idx !== -1) return idx;
+  return scores.length < MAX_RECORDS ? scores.length : -1;
+}
+
+// Pinta la tabla; si hay una entrada pendiente se muestra resaltada en su puesto.
+function renderRecords() {
+  const records = loadRecords();
+  const rows = records.scores.slice();
+  let highlight = -1;
+  if (pendingRecord) {
+    highlight = pendingRecord.rank;
+    rows.splice(highlight, 0, pendingRecord.entry);
+  } else if (gameOver && lastSavedRank !== -1) {
+    highlight = lastSavedRank;
+  }
+  recordsBody.replaceChildren();
+  if (!rows.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 4;
+    td.className = 'records-empty';
+    td.textContent = 'Sin récords todavía';
+    tr.append(td);
+    recordsBody.append(tr);
+  }
+  rows.slice(0, MAX_RECORDS).forEach((e, i) => {
+    const tr = document.createElement('tr');
+    if (i === highlight) tr.className = 'highlight';
+    for (const text of [i + 1, e.name || '???', e.score.toLocaleString(), e.lines]) {
+      const td = document.createElement('td');
+      td.textContent = text; // textContent: el nombre nunca se interpreta como HTML
+      tr.append(td);
+    }
+    recordsBody.append(tr);
+  });
+  bestComboEl.textContent = records.bestCombo;
+  maxLinesEl.textContent = records.maxLines;
+}
+
+// Guarda la entrada pendiente con el nombre escrito (o "Anónimo").
+function commitPendingRecord() {
+  if (!pendingRecord) return;
+  const records = loadRecords();
+  const entry = { ...pendingRecord.entry, name: sanitizeName(nameInput.value) || 'Anónimo' };
+  lastSavedRank = recordRank(records.scores, entry.score);
+  if (lastSavedRank !== -1) {
+    records.scores.splice(lastSavedRank, 0, entry);
+    records.scores = records.scores.slice(0, MAX_RECORDS);
+    saveRecords(records);
+  }
+  pendingRecord = null;
+  nameForm.classList.add('hidden');
+  nameInput.blur();
+  renderRecords();
+}
+
+function showOverlay(mode) {
+  overlay.classList.toggle('start', mode === 'start');
+  document.getElementById('records').classList.toggle('hidden', mode === 'pause');
+  if (mode !== 'gameover') {
+    newRecordEl.classList.add('hidden');
+    nameForm.classList.add('hidden');
+  }
+  restartBtn.textContent = mode === 'start' ? 'Jugar' : 'Reiniciar';
+  renderRecords();
+  overlay.classList.remove('hidden');
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
-  overlay.classList.remove('hidden');
+
+  // combo y líneas máximas cuentan aunque la puntuación no entre en el top
+  const records = loadRecords();
+  const newCombo = maxCombo > records.bestCombo;
+  const newLines = lines > records.maxLines;
+  records.bestCombo = Math.max(records.bestCombo, maxCombo);
+  records.maxLines = Math.max(records.maxLines, lines);
+  saveRecords(records);
+  bestComboEl.classList.toggle('new-best', newCombo);
+  maxLinesEl.classList.toggle('new-best', newLines);
+
+  lastSavedRank = -1;
+  const rank = recordRank(records.scores, score);
+  if (rank !== -1) {
+    pendingRecord = { rank, entry: { name: '', score, lines } };
+    newRecordEl.textContent = `¡Nuevo récord! Puesto ${rank + 1} del top ${MAX_RECORDS}`;
+    newRecordEl.classList.remove('hidden');
+    nameInput.value = '';
+    nameForm.classList.remove('hidden');
+  } else {
+    pendingRecord = null;
+    newRecordEl.classList.add('hidden');
+    nameForm.classList.add('hidden');
+  }
+  showOverlay('gameover');
+  if (pendingRecord) nameInput.focus();
 }
 
 function togglePause() {
@@ -319,7 +469,7 @@ function togglePause() {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    showOverlay('pause');
   }
 }
 
@@ -348,12 +498,17 @@ function loop(ts) {
 }
 
 function init() {
+  commitPendingRecord(); // reiniciar sin pulsar "Guardar" conserva el récord
+  bestComboEl.classList.remove('new-best');
+  maxLinesEl.classList.remove('new-best');
   board = createBoard();
   pieceIds = createBoard();
   nextPieceId = 1;
   score = 0;
   lines = 0;
   level = 1;
+  combo = 0;
+  maxCombo = 0;
   paused = false;
   gameOver = false;
   settling = false;
@@ -370,6 +525,8 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  // mientras se escribe el nombre, las teclas no controlan el juego
+  if (e.target === nameInput) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver || settling) return;
   switch (e.code) {
@@ -394,7 +551,35 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => {
+  init();
+  restartBtn.blur(); // evita que Space/Enter reinicien la partida
+});
+
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  commitPendingRecord();
+});
+
+nameInput.addEventListener('input', () => {
+  if (!pendingRecord) return;
+  pendingRecord.entry.name = sanitizeName(nameInput.value);
+  renderRecords();
+});
+
+resetRecordsBtn.addEventListener('click', () => {
+  resetRecordsBtn.blur();
+  if (!confirm('¿Borrar todos los récords? Esta acción no se puede deshacer.')) return;
+  try {
+    localStorage.removeItem(RECORDS_KEY);
+  } catch {
+    // sin acceso a localStorage: nada que borrar
+  }
+  lastSavedRank = -1;
+  bestComboEl.classList.remove('new-best');
+  maxLinesEl.classList.remove('new-best');
+  renderRecords();
+});
 
 const themeBtn = document.getElementById('theme-toggle');
 
@@ -410,5 +595,9 @@ themeBtn.addEventListener('click', () => {
   themeBtn.blur(); // evita que Space/Enter vuelvan a activar el botón
 });
 
-init();
+// Pantalla de inicio: tablero vacío y récords hasta pulsar "Jugar"
+board = createBoard();
+current = null;
+gameOver = true;
+showOverlay('start');
 applyTheme(document.documentElement.dataset.theme);

@@ -238,3 +238,126 @@ kbd {
   position: relative;
   background: transparent;
 }
+
+/* ---- Récords ---- */
+.overlay.start #overlay-title {
+  color: var(--accent);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.new-record {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffb74d;
+}
+
+.name-form {
+  display: flex;
+  gap: 6px;
+}
+
+.name-form input {
+  width: 150px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--board-bg);
+  color: var(--text);
+  font-size: 14px;
+  user-select: text;
+}
+
+.name-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.name-form button {
+  background: var(--accent);
+  color: var(--btn-text);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.records {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.records-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 260px;
+}
+
+.records-table th {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--label);
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.records-table td {
+  padding: 3px 8px;
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--text);
+}
+
+.records-table td:nth-child(2) {
+  text-align: left;
+  font-family: inherit;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-table tr.highlight td {
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.records-table td.records-empty {
+  color: var(--muted);
+  font-family: inherit;
+  text-align: center;
+}
+
+.records-stats {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.records-stats span {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.records-stats span.new-best {
+  color: #ffb74d;
+}
+
+.reset-records-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.reset-records-btn:hover {
+  color: #e57373;
+}
