@@ -42,8 +42,16 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+// --- Menú de pausa: elementos ---
+const pauseMenu = document.getElementById('pause-menu');
+const pauseResumeBtn = document.getElementById('pause-resume');
+const pauseRestartBtn = document.getElementById('pause-restart');
+const pauseControlsBtn = document.getElementById('pause-controls-btn');
+const pauseControlsList = document.getElementById('pause-controls');
+const startLevelSelect = document.getElementById('start-level');
 
 let board, pieceIds, nextPieceId, current, next, score, lines, level, paused, gameOver, settling, settleAccum, lastTime, dropAccum, dropInterval, animId;
+let startLevel = 1; // nivel con el que empezó la partida actual (suelo del nivel)
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -165,13 +173,17 @@ function settleStep() {
   return moved;
 }
 
+function intervalForLevel(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
+}
+
 function clearLines() {
   const cleared = removeFullRows();
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    level = Math.max(startLevel, Math.floor(lines / 10) + 1);
+    dropInterval = intervalForLevel(level);
     updateHUD();
   }
   return cleared;
@@ -313,13 +325,15 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    closePauseMenu();
+    // reinicia el reloj para que la pieza no salte al reanudar
     lastTime = performance.now();
+    dropAccum = 0;
+    settleAccum = 0;
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    openPauseMenu();
   }
 }
 
@@ -353,25 +367,34 @@ function init() {
   nextPieceId = 1;
   score = 0;
   lines = 0;
-  level = 1;
+  startLevel = loadStartLevel();
+  level = startLevel;
   paused = false;
   gameOver = false;
   settling = false;
   settleAccum = 0;
-  dropInterval = 1000;
+  dropInterval = intervalForLevel(level);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  closePauseMenu();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver || settling) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    // Esc sobre el selector solo cierra su desplegable, no el menú
+    if (e.code === 'Escape' && paused && document.activeElement === startLevelSelect) return;
+    e.preventDefault();
+    if (!e.repeat) togglePause(); // mantener la tecla no hace parpadear el menú
+    return;
+  }
+  if (paused) { handlePauseMenuKey(e); return; }
+  if (gameOver || settling) return;
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -395,6 +418,80 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+// --- Menú de pausa ---
+const MAX_START_LEVEL = 10;
+
+function loadStartLevel() {
+  let v = 1;
+  try { v = parseInt(localStorage.getItem('startLevel'), 10); } catch (_) {}
+  return v >= 1 && v <= MAX_START_LEVEL ? v : 1;
+}
+
+function saveStartLevel(v) {
+  try { localStorage.setItem('startLevel', String(v)); } catch (_) {}
+}
+
+const PAUSE_ITEMS = [pauseResumeBtn, pauseRestartBtn, pauseControlsBtn, startLevelSelect];
+
+function openPauseMenu() {
+  startLevelSelect.value = String(loadStartLevel());
+  pauseMenu.classList.remove('hidden');
+  pauseResumeBtn.focus();
+}
+
+function closePauseMenu() {
+  pauseMenu.classList.add('hidden');
+  pauseControlsList.classList.add('hidden');
+  pauseControlsBtn.textContent = 'Ver controles';
+  pauseControlsBtn.setAttribute('aria-expanded', 'false');
+  // sin foco en el menú, Space/Enter no reactivan sus botones al volver al juego
+  if (PAUSE_ITEMS.includes(document.activeElement)) document.activeElement.blur();
+}
+
+// Navegación con teclado dentro del menú; las teclas nunca llegan al juego.
+function handlePauseMenuKey(e) {
+  const items = PAUSE_ITEMS;
+  const idx = items.indexOf(document.activeElement);
+  let step = 0;
+  if (e.code === 'ArrowDown') step = 1;
+  else if (e.code === 'ArrowUp') step = -1;
+  else if (e.code === 'Tab') step = e.shiftKey ? -1 : 1;
+  else if (document.activeElement === startLevelSelect &&
+           (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+    e.preventDefault();
+    const v = Number(startLevelSelect.value) + (e.code === 'ArrowRight' ? 1 : -1);
+    if (v >= 1 && v <= MAX_START_LEVEL) {
+      startLevelSelect.value = String(v);
+      saveStartLevel(v);
+    }
+    return;
+  }
+  else if (idx === -1 && (e.code === 'Enter' || e.code === 'Space')) step = 1;
+  if (!step) return;
+  e.preventDefault();
+  const n = items.length;
+  // sin foco en el menú: avanzar va al primero, retroceder al último
+  items[idx === -1 ? (step > 0 ? 0 : n - 1) : (idx + step + n) % n].focus();
+}
+
+for (let i = 1; i <= MAX_START_LEVEL; i++) {
+  const opt = document.createElement('option');
+  opt.value = String(i);
+  opt.textContent = String(i);
+  startLevelSelect.appendChild(opt);
+}
+
+pauseResumeBtn.addEventListener('click', () => { if (paused) togglePause(); });
+pauseRestartBtn.addEventListener('click', init);
+pauseControlsBtn.addEventListener('click', () => {
+  const show = pauseControlsList.classList.contains('hidden');
+  pauseControlsList.classList.toggle('hidden', !show);
+  pauseControlsBtn.textContent = show ? 'Ocultar controles' : 'Ver controles';
+  pauseControlsBtn.setAttribute('aria-expanded', String(show));
+});
+startLevelSelect.addEventListener('change', () => saveStartLevel(Number(startLevelSelect.value)));
+// --- fin menú de pausa ---
 
 const themeBtn = document.getElementById('theme-toggle');
 
