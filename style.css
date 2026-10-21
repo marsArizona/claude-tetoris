@@ -360,6 +360,8 @@ kbd {
 
 .reset-records-btn:hover {
   color: #e57373;
+}
+
 /* ---- Menú de pausa ---- */
 #pause-title {
   font-size: 28px;
@@ -452,4 +454,33 @@ button.menu-item {
 .menu-hint {
   font-size: 11px;
   color: var(--muted);
+}
+
+/* ---- Selector de skin ---- */
+.skin-select {
+  background: var(--board-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.skin-select:hover,
+.skin-select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* ---- Skin Neon: fondo negro en tablero y preview (en ambos temas) ---- */
+[data-skin="neon"] #next-canvas,
+[data-skin="neon"] .board-wrap {
+  background: #000;
+  --grid: #10141c;
+}
+
+[data-skin="neon"] .board-wrap::before {
+  opacity: 0.12;
 }
