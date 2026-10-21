@@ -238,3 +238,97 @@ kbd {
   position: relative;
   background: transparent;
 }
+
+/* ---- Menú de pausa ---- */
+#pause-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--accent);
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 220px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--board-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+button.menu-item {
+  justify-content: center;
+}
+
+.menu-item.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--btn-text);
+}
+
+.level-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#start-level-value {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  min-width: 2ch;
+  text-align: center;
+}
+
+.level-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.menu-controls {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  text-align: left;
+}
+
+.menu-controls.hidden {
+  display: none;
+}
+
+.menu-controls li {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
