@@ -56,7 +56,30 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+        <!-- Records al terminar la partida -->
+        <div id="records-panel" class="records-panel is-hidden">
+          <p id="new-record-msg" class="new-record-msg"></p>
+          <div id="name-form" class="name-form is-hidden">
+            <input id="name-input" type="text" maxlength="12" placeholder="Jugador" autocomplete="off" aria-label="Nombre del jugador" />
+            <button id="save-name-btn" type="button">Guardar</button>
+          </div>
+          <table id="gameover-records" class="records-table"></table>
+          <p id="gameover-stats" class="records-stats"></p>
+        </div>
         <button id="restart-btn">Reiniciar</button>
+      </div>
+    </div>
+
+    <!-- Pantalla de inicio con la tabla de records -->
+    <div id="start-screen" class="overlay start-screen">
+      <div class="overlay-box">
+        <p class="start-title">TETORIS</p>
+        <span class="label">RECORDS</span>
+        <table id="start-records" class="records-table"></table>
+        <p id="start-stats" class="records-stats"></p>
+        <button id="play-btn" class="primary-btn" type="button">JUGAR</button>
+        <p class="start-hint">o pulsa <kbd>Enter</kbd></p>
+        <button id="reset-records-btn" class="link-btn" type="button">Borrar records</button>
       </div>
     </div>
   </div>
