@@ -43,6 +43,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Skins visuales** seleccionables en vivo (Retro, Neón, Pastel y Pixel art), con la preferencia guardada en el navegador.
 
 ---
 
@@ -87,6 +88,19 @@ Después abre `http://localhost:8000` en el navegador.
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P`       | Pausar / reanudar                 |
 
+### Skins
+
+En el panel lateral, el selector **SKIN** cambia la apariencia completa del juego sin recargar la página (tablero, pieza fantasma y vista previa NEXT):
+
+| Skin          | Aspecto                                                                                 |
+| ------------- | --------------------------------------------------------------------------------------- |
+| **Retro**     | Bloques cuadrados de colores planos con una franja de brillo (estilo original).         |
+| **Neón**      | Tablero negro y bloques con contorno luminoso y efecto _glow_ (`shadowBlur` del canvas). |
+| **Pastel**    | Colores suaves y bloques con esquinas redondeadas (`roundRect` o, si no existe, `arcTo`). |
+| **Pixel art** | Bloques de 8 bits con bisel (claro arriba/izquierda, oscuro abajo/derecha) y textura de puntos. |
+
+La elección se guarda en `localStorage` (clave `skin`); si no hay valor o no es válido se usa **Retro**. Los skins conviven con el modo claro/oscuro (`☀️ Claro` / `🌙 Oscuro`). Al elegir un skin el selector pierde el foco, de modo que las flechas y `Espacio` siguen controlando el juego.
+
 ---
 
 ## Cómo funciona
@@ -98,12 +112,12 @@ El juego se compone de tres archivos que cooperan:
 Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
-- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
+- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza, el selector de skin y la lista de controles.
 - Un overlay para los estados **PAUSA** y **GAME OVER**.
 
 ### 2. `style.css`
 
-Aporta el aspecto visual con estética _dark / retro arcade_: fondo oscuro, tipografía monoespaciada para los marcadores y _backdrop blur_ en los overlays.
+Aporta el aspecto visual con estética _dark / retro arcade_: fondo oscuro, tipografía monoespaciada para los marcadores y _backdrop blur_ en los overlays. Cada skin añade sus ajustes con selectores `[data-skin="..."]` (fondo del tablero, color de la cuadrícula `--grid`, bordes y sombras).
 
 ### 3. `game.js`
 
@@ -118,6 +132,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
+- **Skins** (`SKINS`): cada skin tiene un nombre (`label`), su paleta `colors` y su propia función `drawBlock`. La función global `drawBlock` delega en el skin activo y restaura `globalAlpha` a 1; `applySkin()` cambia el skin, actualiza `data-skin`, lo guarda en `localStorage` y repinta el tablero y la vista previa.
 
 ### Flujo del juego
 
@@ -174,7 +189,8 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLS`         | Columnas del tablero                     | `10`                  |
 | `ROWS`         | Filas del tablero                        | `20`                  |
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
-| `COLORS`       | Paleta de colores por tipo de pieza      | 8 colores             |
+| `COLORS`       | Paleta del skin Retro por tipo de pieza  | 8 colores             |
+| `SKINS`        | Skins disponibles: paleta (`colors`) y función de dibujo (`drawBlock`) | `retro`, `neon`, `pastel`, `pixel` |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 
