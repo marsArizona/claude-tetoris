@@ -45,7 +45,7 @@
             <li><kbd>↑</kbd> rotar</li>
             <li><kbd>↓</kbd> bajar</li>
             <li><kbd>Space</kbd> caída</li>
-            <li><kbd>P</kbd> pausa</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
           </ul>
         </div>
       </aside>
@@ -76,6 +76,33 @@
           <button id="reset-records-btn" class="reset-records-btn" type="button">Borrar récords</button>
         </section>
         <button id="restart-btn">Jugar</button>
+      </div>
+    </div>
+
+    <div id="pause-menu" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <div class="overlay-box pause-box">
+        <p id="pause-title">PAUSA</p>
+        <div class="menu" role="menu">
+          <button class="menu-item" type="button" role="menuitem" tabindex="-1" data-action="resume">Reanudar</button>
+          <button class="menu-item" type="button" role="menuitem" tabindex="-1" data-action="restart">Reiniciar</button>
+          <button class="menu-item" type="button" role="menuitem" tabindex="-1" data-action="controls" aria-expanded="false">Ver controles</button>
+          <ul id="menu-controls" class="menu-controls hidden">
+            <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+            <li><kbd>↑</kbd><kbd>X</kbd> rotar</li>
+            <li><kbd>↓</kbd> bajar</li>
+            <li><kbd>Space</kbd> caída</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
+          </ul>
+          <div class="menu-item level-item" role="menuitem" tabindex="-1" data-action="level">
+            <span>Nivel inicial</span>
+            <span class="level-picker">
+              <button type="button" class="level-btn" tabindex="-1" data-step="-1" aria-label="Bajar nivel inicial">◀</button>
+              <span id="start-level-value">1</span>
+              <button type="button" class="level-btn" tabindex="-1" data-step="1" aria-label="Subir nivel inicial">▶</button>
+            </span>
+          </div>
+        </div>
+        <p class="menu-hint">El nivel inicial se aplica al reiniciar</p>
       </div>
     </div>
   </div>
