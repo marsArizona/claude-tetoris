@@ -46,6 +46,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Menú de pausa** con opciones para reanudar, reiniciar, ver los controles y elegir el nivel inicial.
 - **Game Over** con opción de reinicio.
 - **Pantalla de inicio** y **tabla de records local** (Top 5, mejor combo y líneas máximas), guardada en el navegador. Ver [Records](#records).
+- **Skins visuales** seleccionables en vivo (Retro, Neón, Pastel y Pixel art), con la preferencia guardada en el navegador.
 
 ---
 
@@ -117,6 +118,19 @@ Al abrir el juego aparece una **pantalla de inicio** con el título, la tabla de
 
 Los datos se guardan en `localStorage` con las claves `records` (array del top 5 ordenado por puntuación) y `stats` (`{ bestCombo, maxLines }`). Si esos datos están corruptos o no se pueden leer, la tabla y las estadísticas empiezan vacías. Si pulsas **Reiniciar** sin haber guardado el nombre, el récord se guarda con el nombre que haya en el campo.
 
+### Skins
+
+En el panel lateral, el selector **SKIN** cambia la apariencia completa del juego sin recargar la página (tablero, pieza fantasma y vista previa NEXT):
+
+| Skin          | Aspecto                                                                                 |
+| ------------- | --------------------------------------------------------------------------------------- |
+| **Retro**     | Bloques cuadrados de colores planos con una franja de brillo (estilo original).         |
+| **Neón**      | Tablero negro y bloques con contorno luminoso y efecto _glow_ (`shadowBlur` del canvas). |
+| **Pastel**    | Colores suaves y bloques con esquinas redondeadas (`roundRect` o, si no existe, `arcTo`). |
+| **Pixel art** | Bloques de 8 bits con bisel (claro arriba/izquierda, oscuro abajo/derecha) y textura de puntos. |
+
+La elección se guarda en `localStorage` (clave `skin`); si no hay valor o no es válido se usa **Retro**. Los skins conviven con el modo claro/oscuro (`☀️ Claro` / `🌙 Oscuro`). Al elegir un skin el selector pierde el foco, de modo que las flechas y `Espacio` siguen controlando el juego.
+
 ---
 
 ## Cómo funciona
@@ -128,13 +142,13 @@ El juego se compone de tres archivos que cooperan:
 Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
-- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
+- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza, el selector de skin y la lista de controles.
 - Un overlay para el estado **GAME OVER** (con la tabla de records y el campo para el nombre) y otro (`#pause-menu`) para el menú de pausa.
 - Un overlay `#start-screen` con la pantalla de inicio: records, botón **JUGAR** y **Borrar records**.
 
 ### 2. `style.css`
 
-Aporta el aspecto visual con estética _dark / retro arcade_: fondo oscuro, tipografía monoespaciada para los marcadores y _backdrop blur_ en los overlays.
+Aporta el aspecto visual con estética _dark / retro arcade_: fondo oscuro, tipografía monoespaciada para los marcadores y _backdrop blur_ en los overlays. Cada skin añade sus ajustes con selectores `[data-skin="..."]` (fondo del tablero, color de la cuadrícula `--grid`, bordes y sombras).
 
 ### 3. `game.js`
 
@@ -149,6 +163,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
 - **Nivel y velocidad**: la partida empieza en el nivel inicial elegido en el menú de pausa (`startLevel`, 1 por defecto). El nivel se calcula como `max(startLevel, floor(lines / 10) + 1)`: nunca baja del nivel inicial y solo sube cuando las líneas acumuladas alcanzan ese umbral (p. ej. empezando en nivel 5 se pasa al 6 con 50 líneas). La velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
+- **Skins** (`SKINS`): cada skin tiene un nombre (`label`), su paleta `colors` y su propia función `drawBlock`. La función global `drawBlock` delega en el skin activo y restaura `globalAlpha` a 1; `applySkin()` cambia el skin, actualiza `data-skin`, lo guarda en `localStorage` y repinta el tablero y la vista previa.
 
 ### Flujo del juego
 
@@ -208,7 +223,8 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLS`         | Columnas del tablero                     | `10`                  |
 | `ROWS`         | Filas del tablero                        | `20`                  |
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
-| `COLORS`       | Paleta de colores por tipo de pieza      | 8 colores             |
+| `COLORS`       | Paleta del skin Retro por tipo de pieza  | 8 colores             |
+| `SKINS`        | Skins disponibles: paleta (`colors`) y función de dibujo (`drawBlock`) | `retro`, `neon`, `pastel`, `pixel` |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 

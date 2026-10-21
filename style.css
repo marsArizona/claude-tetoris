@@ -468,3 +468,91 @@ kbd {
 .link-btn:hover {
   color: #e57373;
 }
+
+/* ---- Selector de skin ---- */
+.skin-select {
+  background: var(--board-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.skin-select:hover,
+.skin-select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* ---- Skins (conviven con [data-theme]) ---- */
+/* Neón: tablero negro con resplandor */
+[data-skin="neon"] {
+  --grid: rgba(0, 240, 255, 0.07);
+}
+
+[data-skin="neon"] .board-wrap,
+[data-skin="neon"] #next-canvas {
+  --board-bg: #000000;
+  --border: #00f0ff;
+}
+
+[data-skin="neon"] .board-wrap {
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.6), 0 0 40px rgba(255, 43, 214, 0.35);
+}
+
+[data-skin="neon"] #next-canvas {
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+[data-skin="neon"] .value {
+  text-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* Pastel: tonos suaves y esquinas redondeadas */
+[data-skin="pastel"] {
+  --grid: #f3e9f7;
+}
+
+[data-skin="pastel"] .board-wrap,
+[data-skin="pastel"] #next-canvas {
+  --board-bg: #fffaff;
+  --border: #e6d4f0;
+}
+
+[data-theme="dark"][data-skin="pastel"] {
+  --grid: #352e40;
+}
+
+[data-theme="dark"][data-skin="pastel"] .board-wrap,
+[data-theme="dark"][data-skin="pastel"] #next-canvas {
+  --board-bg: #28222f;
+  --border: #4a3f58;
+}
+
+[data-skin="pastel"] .board-wrap,
+[data-skin="pastel"] .board-wrap::before,
+[data-skin="pastel"] #board,
+[data-skin="pastel"] #next-canvas {
+  border-radius: 14px;
+}
+
+/* Pixel art: esquinas duras y renderizado nítido */
+[data-skin="pixel"] .board-wrap,
+[data-skin="pixel"] .board-wrap::before,
+[data-skin="pixel"] #board,
+[data-skin="pixel"] #next-canvas,
+[data-skin="pixel"] .skin-select {
+  border-radius: 0;
+}
+
+[data-skin="pixel"] #board,
+[data-skin="pixel"] #next-canvas {
+  image-rendering: pixelated;
+}
+
+[data-skin="pixel"] .board-wrap {
+  box-shadow: 6px 6px 0 var(--border);
+}
