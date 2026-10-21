@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="style.css" />
   <script>
     document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';
+    // aplica la skin guardada antes de pintar para evitar parpadeo (game.js la valida)
+    try { document.documentElement.dataset.skin = localStorage.getItem('skin') || 'retro'; } catch (e) {}
   </script>
 </head>
 <body>
@@ -36,6 +38,11 @@
         <div class="panel-section">
           <span class="label">NEXT</span>
           <canvas id="next-canvas" width="120" height="120"></canvas>
+        </div>
+
+        <div class="panel-section">
+          <label class="label" for="skin-select">SKIN</label>
+          <select id="skin-select" class="skin-select" aria-label="Cambiar skin"></select>
         </div>
 
         <div class="panel-section controls">
