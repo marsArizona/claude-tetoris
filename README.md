@@ -17,6 +17,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
     - [Opción 1: abrir el archivo directamente](#opción-1-abrir-el-archivo-directamente)
     - [Opción 2: servidor local (recomendado)](#opción-2-servidor-local-recomendado)
   - [Controles](#controles)
+  - [Records](#records)
   - [Cómo funciona](#cómo-funciona)
     - [1. `index.html`](#1-indexhtml)
     - [2. `style.css`](#2-stylecss)
@@ -44,6 +45,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Menú de pausa** con opciones para reanudar, reiniciar, ver los controles y elegir el nivel inicial.
 - **Game Over** con opción de reinicio.
+- **Pantalla de inicio** y **tabla de records local** (Top 5, mejor combo y líneas máximas), guardada en el navegador. Ver [Records](#records).
 
 ---
 
@@ -87,6 +89,7 @@ Después abre `http://localhost:8000` en el navegador.
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P` o `Esc` | Abrir / cerrar el menú de pausa |
+| `Enter`   | Empezar partida (pantalla de inicio) |
 
 ### Menú de pausa
 
@@ -101,6 +104,21 @@ Dentro del menú se navega con `↑` / `↓` o `Tab`, se activa con `Enter`, y e
 
 ---
 
+## Records
+
+Al abrir el juego aparece una **pantalla de inicio** con el título, la tabla de records y las estadísticas históricas. La partida no empieza (no cae ninguna pieza) hasta pulsar **JUGAR** o `Enter`.
+
+- **Top 5**: se guardan las 5 mejores puntuaciones con nombre del jugador, puntos, líneas, nivel y fecha.
+- **Entrar en el top**: al terminar la partida, si la puntuación es mayor que 0 y hay menos de 5 records o supera al quinto, aparece el mensaje **¡Nuevo récord!** y un campo de texto (máx. 12 caracteres, por defecto "Jugador"). Con `Enter` o el botón **Guardar** se guarda y la fila nueva queda resaltada en la tabla. Mientras escribes, las teclas del juego (Espacio, `P`, flechas…) no tienen efecto.
+- **Mejor combo**: número máximo de piezas **consecutivas** que eliminan al menos una línea. Cada pieza cuenta una sola vez aunque provoque una cascada; una pieza que no elimina nada reinicia el combo a 0.
+- **Líneas máximas**: el mayor número de líneas eliminadas en una sola partida.
+- El mejor combo y las líneas máximas se actualizan en cada Game Over, entre o no la puntuación en el top.
+- **Borrar records**: el botón de la pantalla de inicio (pide confirmación) borra la tabla y las estadísticas.
+
+Los datos se guardan en `localStorage` con las claves `records` (array del top 5 ordenado por puntuación) y `stats` (`{ bestCombo, maxLines }`). Si esos datos están corruptos o no se pueden leer, la tabla y las estadísticas empiezan vacías. Si pulsas **Reiniciar** sin haber guardado el nombre, el récord se guarda con el nombre que haya en el campo.
+
+---
+
 ## Cómo funciona
 
 El juego se compone de tres archivos que cooperan:
@@ -111,7 +129,8 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para el estado **GAME OVER** y otro (`#pause-menu`) para el menú de pausa.
+- Un overlay para el estado **GAME OVER** (con la tabla de records y el campo para el nombre) y otro (`#pause-menu`) para el menú de pausa.
+- Un overlay `#start-screen` con la pantalla de inicio: records, botón **JUGAR** y **Borrar records**.
 
 ### 2. `style.css`
 
@@ -134,6 +153,8 @@ Contiene toda la lógica del juego. A grandes rasgos:
 ### Flujo del juego
 
 ```
+carga de la página → tablero vacío + pantalla de inicio (records)
+  ↓ JUGAR / Enter
 init()
   ├─ createBoard()                  → matriz vacía
   ├─ next = randomPiece()
@@ -150,7 +171,7 @@ init()
                └─ con el menú de pausa abierto, las teclas solo navegan el menú
 ```
 
-Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
+Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**, que actualiza las estadísticas y muestra la tabla de records (con el campo de nombre si la puntuación entra en el top 5).
 
 ---
 

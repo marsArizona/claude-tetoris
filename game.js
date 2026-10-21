@@ -50,8 +50,28 @@ const pauseControlsBtn = document.getElementById('pause-controls-btn');
 const pauseControlsList = document.getElementById('pause-controls');
 const startLevelSelect = document.getElementById('start-level');
 
+// ---- Records: elementos del DOM ----
+const MAX_RECORDS = 5;
+const DEFAULT_NAME = 'Jugador';
+const startScreen = document.getElementById('start-screen');
+const startRecords = document.getElementById('start-records');
+const startStats = document.getElementById('start-stats');
+const playBtn = document.getElementById('play-btn');
+const resetRecordsBtn = document.getElementById('reset-records-btn');
+const recordsPanel = document.getElementById('records-panel');
+const newRecordMsg = document.getElementById('new-record-msg');
+const nameForm = document.getElementById('name-form');
+const nameInput = document.getElementById('name-input');
+const saveNameBtn = document.getElementById('save-name-btn');
+const gameoverRecords = document.getElementById('gameover-records');
+const gameoverStats = document.getElementById('gameover-stats');
+
 let board, pieceIds, nextPieceId, current, next, score, lines, level, paused, gameOver, settling, settleAccum, lastTime, dropAccum, dropInterval, animId;
 let startLevel = 1; // nivel con el que empezó la partida actual (suelo del nivel)
+
+// ---- Records: estado de la partida ----
+// combo = piezas consecutivas que eliminan al menos una línea (cascada incluida, una vez por pieza)
+let combo = 0, gameBestCombo = 0, pendingRecord = false;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -215,11 +235,14 @@ function softDrop() {
 function lockPiece() {
   merge();
   if (clearLines()) {
+    combo++;
+    gameBestCombo = Math.max(gameBestCombo, combo);
     // la siguiente pieza espera a que termine de caer el sedimento
     current = null;
     settling = true;
     settleAccum = 0;
   } else {
+    combo = 0;
     spawn();
   }
 }
@@ -319,6 +342,7 @@ function endGame() {
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+  showGameOverRecords();
 }
 
 function togglePause() {
@@ -362,6 +386,7 @@ function loop(ts) {
 }
 
 function init() {
+  if (pendingRecord) saveName(); // Reiniciar sin pulsar Guardar no pierde el récord
   board = createBoard();
   pieceIds = createBoard();
   nextPieceId = 1;
@@ -375,6 +400,11 @@ function init() {
   settleAccum = 0;
   dropInterval = intervalForLevel(level);
   dropAccum = 0;
+  combo = 0;
+  gameBestCombo = 0;
+  pendingRecord = false;
+  startScreen.classList.add('hidden');
+  recordsPanel.classList.add('is-hidden');
   lastTime = performance.now();
   next = randomPiece();
   spawn();
@@ -386,6 +416,12 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return; // escribir el nombre no mueve piezas
+  if (isStartScreenVisible()) {
+    const onButton = e.target && e.target.tagName === 'BUTTON';
+    if (!onButton && (e.code === 'Enter' || e.code === 'NumpadEnter')) { e.preventDefault(); init(); }
+    return;
+  }
   if (e.code === 'KeyP' || e.code === 'Escape') {
     // Esc sobre el selector solo cierra su desplegable, no el menú
     if (e.code === 'Escape' && paused && document.activeElement === startLevelSelect) return;
@@ -507,5 +543,156 @@ themeBtn.addEventListener('click', () => {
   themeBtn.blur(); // evita que Space/Enter vuelvan a activar el botón
 });
 
-init();
+// ---- Records: localStorage, tablas y pantalla de inicio ----
+
+function loadJSON(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+
+function saveJSON(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* sin almacenamiento */ }
+}
+
+function loadRecords() {
+  const data = loadJSON('records');
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter(r => r && typeof r === 'object' && Number.isFinite(r.score))
+    .map(r => ({
+      name: String(r.name ?? DEFAULT_NAME).slice(0, 12),
+      score: r.score,
+      lines: Number(r.lines) || 0,
+      level: Number(r.level) || 1,
+      date: String(r.date ?? ''),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_RECORDS);
+}
+
+function loadStats() {
+  const data = loadJSON('stats');
+  const s = data && typeof data === 'object' ? data : {};
+  return { bestCombo: Number(s.bestCombo) || 0, maxLines: Number(s.maxLines) || 0 };
+}
+
+function qualifiesForRecords(points) {
+  const records = loadRecords();
+  return points > 0 && (records.length < MAX_RECORDS || points > records[records.length - 1].score);
+}
+
+// Inserta la puntuación actual y devuelve su posición (o -1 si no entró)
+function addRecord(name) {
+  const entry = { name, score, lines, level, date: new Date().toISOString().slice(0, 10) };
+  const records = loadRecords();
+  records.push(entry);
+  records.sort((a, b) => b.score - a.score);
+  const top = records.slice(0, MAX_RECORDS);
+  saveJSON('records', top);
+  return top.indexOf(entry);
+}
+
+function renderRecords(table, highlight = -1) {
+  const records = loadRecords();
+  const rows = [];
+  const head = document.createElement('tr');
+  for (const h of ['#', 'Nombre', 'Puntos', 'Líneas', 'Nivel']) {
+    const th = document.createElement('th');
+    th.textContent = h;
+    head.appendChild(th);
+  }
+  rows.push(head);
+  if (!records.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 5;
+    td.className = 'records-empty';
+    td.textContent = 'Sin records todavía';
+    tr.appendChild(td);
+    rows.push(tr);
+  }
+  records.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    if (i === highlight) tr.className = 'record-highlight';
+    for (const v of [i + 1, r.name, r.score.toLocaleString(), r.lines, r.level]) {
+      const td = document.createElement('td');
+      td.textContent = v; // textContent: el nombre nunca se interpreta como HTML
+      tr.appendChild(td);
+    }
+    rows.push(tr);
+  });
+  table.replaceChildren(...rows);
+}
+
+function renderStats(el) {
+  const stats = loadStats();
+  el.textContent = `Mejor combo: ${stats.bestCombo} · Líneas máx.: ${stats.maxLines}`;
+}
+
+function isStartScreenVisible() {
+  return !startScreen.classList.contains('hidden');
+}
+
+function showStartScreen() {
+  renderRecords(startRecords);
+  renderStats(startStats);
+  startScreen.classList.remove('hidden');
+  playBtn.focus();
+}
+
+function showGameOverRecords() {
+  const stats = loadStats();
+  saveJSON('stats', {
+    bestCombo: Math.max(stats.bestCombo, gameBestCombo),
+    maxLines: Math.max(stats.maxLines, lines),
+  });
+  pendingRecord = qualifiesForRecords(score);
+  newRecordMsg.textContent = pendingRecord ? '¡Nuevo récord! Escribe tu nombre' : '';
+  nameForm.classList.toggle('is-hidden', !pendingRecord);
+  renderRecords(gameoverRecords);
+  renderStats(gameoverStats);
+  recordsPanel.classList.remove('is-hidden');
+  if (pendingRecord) {
+    nameInput.value = DEFAULT_NAME;
+    setTimeout(() => {
+      if (!pendingRecord) return;
+      nameInput.focus();
+      nameInput.select();
+    }, 400);
+  }
+}
+
+function saveName() {
+  if (!pendingRecord) return;
+  pendingRecord = false;
+  const name = nameInput.value.trim().slice(0, 12) || DEFAULT_NAME;
+  const pos = addRecord(name);
+  nameInput.blur();
+  nameForm.classList.add('is-hidden');
+  newRecordMsg.textContent = pos >= 0 ? `¡Nuevo récord! Puesto #${pos + 1}` : '';
+  renderRecords(gameoverRecords, pos);
+}
+
+saveNameBtn.addEventListener('click', saveName);
+nameInput.addEventListener('keydown', e => {
+  if (e.repeat) { e.preventDefault(); return; } // ignora teclas mantenidas desde la partida
+  if (e.isComposing) return;
+  if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); saveName(); }
+});
+playBtn.addEventListener('click', () => { playBtn.blur(); init(); });
+resetRecordsBtn.addEventListener('click', () => {
+  if (!confirm('¿Borrar todos los records?')) return;
+  try {
+    localStorage.removeItem('records');
+    localStorage.removeItem('stats');
+  } catch { /* sin almacenamiento */ }
+  renderRecords(startRecords);
+  renderStats(startStats);
+});
+
+// Antes de la primera partida: tablero vacío y juego detenido hasta pulsar JUGAR
+board = createBoard();
+pieceIds = createBoard();
+current = null;
+gameOver = true;
+showStartScreen();
 applyTheme(document.documentElement.dataset.theme);
